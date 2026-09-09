@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, useDragControls } from "motion/react";
-import { CONTRASTS, Contrast, FONTS, Item, KIND_SPEC, NavTab, PALETTES, Palette, SHAPES, ShapeScale, Theme, defaultTabsFor, iconSlotsOf, setIconSlot } from "@/lib/tokens";
+import { CONTRASTS, Contrast, FONTS, Item, KIND_SPEC, NAV_ITEMS, NavTab, PALETTES, Palette, PHONE_W, SHAPES, ShapeScale, Theme, defaultTabsFor, iconSlotsOf, navItemsOf, navVariantPatch, setIconSlot, Variant } from "@/lib/tokens";
 import { ensureFontLoaded } from "@/lib/theme";
 import { KIND_TEXT, LANGS, Lang, t, useLang } from "@/lib/i18n";
 import { IconPicker } from "./IconPicker";
@@ -310,11 +310,53 @@ export function MobileInspector({
 
       {variants.length > 0 && (
         <Row icon="palette" label={t("style", lang)} p={p}>
-          <div className="no-scrollbar" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "3px 3px 6px" }}>
-            {variants.map((v) => (
-              <VariantSwatch key={v.key} v={v.key} label={v.label} p={p} on={item.variant === v.key} onClick={() => onChange({ variant: v.key })} />
-            ))}
-          </div>
+          {item.kind === "bottomNav" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, flex: 1 }}>
+              <Segmented<Variant>
+                options={variants.map((v) => ({ key: v.key, label: v.label }))}
+                value={item.variant === "tonal" ? "tonal" : "filled"}
+                onChange={(k) => onChange(navVariantPatch(item, k, PHONE_W))}
+                p={p}
+              />
+              {item.variant === "tonal" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {NAV_ITEMS.map((k) => {
+                    const on = navItemsOf(item) === k;
+                    const label = t(k === "selected" ? "navItemsSelected" : k === "always" ? "navItemsAlways" : k === "icons" ? "navItemsIcons" : "navItemsText", lang);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => onChange({ navItems: k === "selected" ? undefined : k })}
+                        title={label}
+                        aria-pressed={on}
+                        className="m3-press"
+                        style={{
+                          height: 40,
+                          padding: "0 10px",
+                          borderRadius: 20,
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          background: on ? p.primary : p.surfaceContainerHigh,
+                          color: on ? p.onPrimary : p.onSurfaceVariant,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="no-scrollbar" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "3px 3px 6px" }}>
+              {variants.map((v) => (
+                <VariantSwatch key={v.key} v={v.key} label={v.label} p={p} on={item.variant === v.key} onClick={() => onChange({ variant: v.key })} />
+              ))}
+            </div>
+          )}
         </Row>
       )}
 

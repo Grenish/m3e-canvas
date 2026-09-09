@@ -47,6 +47,10 @@ import {
   halfWidth,
   isPhoneFrame,
   isWideRail,
+  NAV_ITEMS,
+  isFloatingNav,
+  navItemsOf,
+  navVariantPatch,
   onToken,
   toggleIcon,
   iconSlotsOf,
@@ -119,6 +123,11 @@ export function variantsOf(kind: Kind): { key: Variant; label: string }[] {
       return [
         { key: "tonal", label: t("standard") },
         { key: "filled", label: t("vibrant") },
+      ];
+    case "bottomNav":
+      return [
+        { key: "filled", label: t("standard") },
+        { key: "tonal", label: t("floating") },
       ];
     case "iconButton":
       return variants.filter((v) => v.key !== "elevated" && v.key !== "text").concat({
@@ -1143,18 +1152,60 @@ export function Inspector({
 
       {variants.length > 0 && item.kind !== "card" && (
         <Section id="style" icon="palette" title={t("style", lang)} p={p}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {variants.map((v) => (
-              <VariantSwatch
-                key={v.key}
-                v={v.key}
-                label={v.label}
+          {item.kind === "bottomNav" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Segmented<Variant>
+                options={variants.map((v) => ({ key: v.key, label: v.label }))}
+                value={shown.variant === "tonal" ? "tonal" : "filled"}
+                onChange={(k) => onChange(navVariantPatch(item, k, frameSize.w))}
                 p={p}
-                on={shown.variant === v.key}
-                onClick={() => change({ variant: v.key })}
               />
-            ))}
-          </div>
+              {item.variant === "tonal" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {NAV_ITEMS.map((k) => {
+                    const on = navItemsOf(item) === k;
+                    const label = t(k === "selected" ? "navItemsSelected" : k === "always" ? "navItemsAlways" : k === "icons" ? "navItemsIcons" : "navItemsText", lang);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => onChange({ navItems: k === "selected" ? undefined : k })}
+                        title={label}
+                        aria-pressed={on}
+                        className="m3-press"
+                        style={{
+                          height: 36,
+                          padding: "0 10px",
+                          borderRadius: 18,
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: on ? p.primary : p.surfaceContainerHigh,
+                          color: on ? p.onPrimary : p.onSurfaceVariant,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {variants.map((v) => (
+                <VariantSwatch
+                  key={v.key}
+                  v={v.key}
+                  label={v.label}
+                  p={p}
+                  on={shown.variant === v.key}
+                  onClick={() => change({ variant: v.key })}
+                />
+              ))}
+            </div>
+          )}
         </Section>
       )}
 
@@ -1308,7 +1359,7 @@ export function Inspector({
                 p={p}
               />
             )}
-            {spec.size && (
+            {spec.size && !isFloatingNav(item) && (
               <>
                 <Slider
                   icon={spec.size.icon}

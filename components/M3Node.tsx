@@ -39,6 +39,10 @@ import {
   isScrollableTabs,
   tabScrollOffset,
   SCROLL_TAB_W,
+  isFloatingNav,
+  floatingNavItems,
+  FLOATING_NAV_EDGE,
+  FLOATING_NAV_GAP,
 } from "@/lib/tokens";
 import { CircularProgress, LinearProgress, LoadingIndicator } from "./Loading";
 import { t, useLang } from "@/lib/i18n";
@@ -997,14 +1001,17 @@ function Body({ item, p, tabScroll }: { item: Item; p: Palette; tabScroll?: numb
 
     case "bottomNav": {
       const tabs = item.tabs ?? [];
+      const floating = isFloatingNav(item);
+      const parts = floating ? floatingNavItems(item) : [];
       return (
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-around",
+            justifyContent: floating ? "center" : "space-around",
+            gap: floating ? FLOATING_NAV_GAP : 0,
             height: "100%",
-            padding: `0 4px ${NAV_BAR_H}px`,
+            padding: floating ? `0 ${FLOATING_NAV_EDGE}px` : `0 4px ${NAV_BAR_H}px`,
             boxSizing: "border-box",
             position: "relative",
           }}
@@ -1012,6 +1019,32 @@ function Body({ item, p, tabScroll }: { item: Item; p: Palette; tabScroll?: numb
           {tabs.map((t, i) => {
             const on = i === Math.min(item.selected ?? 0, Math.max(0, tabs.length - 1));
             const withLabel = t.label.trim().length > 0;
+            const part = parts[i];
+            if (part) {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: part.icon && part.label ? 4 : 0,
+                    height: 40,
+                    padding: `0 ${part.pad}px`,
+                    borderRadius: scaleR(20),
+                    background: part.on ? p.secondaryContainer : "transparent",
+                    color: part.on ? p.onSecondaryContainer : p.onSurfaceVariant,
+                    flex: "0 0 auto",
+                    transition: "background 160ms, color 160ms",
+                  }}
+                >
+                  {part.icon && t.icon && <Icon name={t.icon} size={24} fill={part.on} />}
+                  {part.label && (
+                    <span style={{ fontSize: 12, fontWeight: part.on ? w(500, 700) : w(400, 500), maxWidth: 96, ...ellipsis }}>{t.label}</span>
+                  )}
+                </div>
+              );
+            }
             return (
               <div
                 key={i}
@@ -1306,6 +1339,8 @@ function shadowOf(item: Item): string {
       return "0 3px 8px rgba(0,0,0,0.18)";
     case "toolbar":
       return "0 2px 6px rgba(0,0,0,0.14), 0 1px 2px rgba(0,0,0,0.10)";
+    case "bottomNav":
+      return isFloatingNav(item) ? "0 2px 6px rgba(0,0,0,0.14), 0 1px 2px rgba(0,0,0,0.10)" : "none";
     default:
       return "none";
   }

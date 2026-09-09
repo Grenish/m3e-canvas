@@ -77,6 +77,7 @@ import {
   FULL_WIDTH,
   fitHeight,
   railExpansionSide,
+  isFloatingNav,
 } from "@/lib/tokens";
 import { Icon, M3Node, M3Static, MeasuredContent } from "@/components/M3Node";
 import { LayersPanel } from "@/components/Layers";
@@ -1731,7 +1732,12 @@ export default function Page() {
     if (!primaryId) return;
     const id = primaryId;
     /* a rail state change resizes it too, so it counts as a resize for the lock */
-    const resizes = "size" in patch || "size2" in patch || "railExpanded" in patch || "railModal" in patch;
+    const changing = groupsRef.current.flatMap((g) => g.items).find((it) => it.id === id);
+    const floatingResize =
+      changing?.kind === "bottomNav" &&
+      (changing.variant === "tonal" || patch.variant === "tonal") &&
+      ("variant" in patch || "navItems" in patch || "selected" in patch || "tabs" in patch);
+    const resizes = "size" in patch || "size2" in patch || "railExpanded" in patch || "railModal" in patch || floatingResize;
     /* a resize would reflow and move the locked group; other edits leave its layout alone */
     if (resizes && groupsRef.current.some((g) => g.locked && g.items.some((it) => it.id === id))) {
       showToast(lockedGroupMsg());
@@ -1743,7 +1749,18 @@ export default function Page() {
         const idx = g.items.findIndex((it) => it.id === id);
         if (idx < 0) return g;
         const next = { ...g.items[idx], ...patch };
-        const { dx, dy } = resizes ? resizeShift(g, g.items[idx], next) : { dx: 0, dy: 0 };
+        let { dx, dy } = resizes ? resizeShift(g, g.items[idx], next) : { dx: 0, dy: 0 };
+        if (g.items[idx].kind === "bottomNav" && "variant" in patch) {
+          const f = frameOfGroup(g, framesRef.current, widthsRef.current);
+          if (f) {
+            const fr = frameRect(f);
+            const b = sizeOf(next, widthsRef.current);
+            const bottom = g.y + dy + b.h;
+            if (Math.abs(bottom - fr.b) <= 1 || Math.abs(bottom - (fr.b - PHONE_MARGIN)) <= 1) {
+              dy = (isFloatingNav(next) ? fr.b - PHONE_MARGIN - b.h : fr.b - b.h) - g.y;
+            }
+          }
+        }
         if (dx || dy) instantRef.current.add(g.id);
         return {
           ...g,

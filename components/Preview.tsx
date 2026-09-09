@@ -41,6 +41,10 @@ import {
   isScrollableTabs,
   tabScrollOffset,
   SCROLL_TAB_W,
+  isFloatingNav,
+  floatingNavItems,
+  FLOATING_NAV_EDGE,
+  FLOATING_NAV_GAP,
 } from "@/lib/tokens";
 import { Icon, M3Node } from "./M3Node";
 import { IconBtn } from "./ui";
@@ -256,6 +260,13 @@ function Tappable({
     /* hit areas sit inside the scrolling layer, one per tab, so they move with the row */
     const n = item.tabs?.length ?? 0;
     for (let i = 0; i < n; i++) slots.push({ key: `tab:${i}`, style: { left: i * SCROLL_TAB_W, width: SCROLL_TAB_W, top: 0, bottom: 0, borderRadius: 16 } });
+  } else if (onSlot && isFloatingNav(item)) {
+    /* the bar hugs its destinations, so each tap area is that destination's own width */
+    let left = FLOATING_NAV_EDGE;
+    floatingNavItems(item).forEach((part, i) => {
+      slots.push({ key: `tab:${i}`, style: { left, width: part.w, top: 12, height: 40, borderRadius: 20 } });
+      left += part.w + FLOATING_NAV_GAP;
+    });
   } else if (onSlot && (item.kind === "bottomNav" || item.kind === "tabs")) {
     const n = item.tabs?.length ?? 0;
     for (let i = 0; i < n; i++)

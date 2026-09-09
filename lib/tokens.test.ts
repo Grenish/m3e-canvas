@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DEFAULT_THEME, R_FULL, baseRadii, makeItem, normalizeTheme, railLayoutWidth, railMetrics, runCorners, scaleR, setGlobalShape, sizeOf, isScrollableTabs, tabScrollOffset, removeTabPatch, tabCountPatch, SCROLL_TAB_W, type Item } from "./tokens";
+import { CONTENT_W, DEFAULT_THEME, FLOATING_NAV_EDGE, FLOATING_NAV_GAP, FLOATING_NAV_H, FLOATING_NAV_R, KIND_SPEC, NAV_BAR_H, PHONE_W, R_FULL, baseRadii, floatingNavItems, floatingNavWidth, isFloatingNav, isNavItems, makeItem, navItemsOf, navVariantPatch, normalizeTheme, railLayoutWidth, railMetrics, runCorners, scaleR, setGlobalShape, sizeOf, isScrollableTabs, tabScrollOffset, removeTabPatch, tabCountPatch, SCROLL_TAB_W, type Item } from "./tokens";
 
 afterEach(() => setGlobalShape("rounded")); // restore the module default
 
@@ -128,5 +128,78 @@ describe("scrollable tab rows", () => {
     expect(tabScrollOffset(row(7, 4), 412)).toBe(5.5 * SCROLL_TAB_W - 412);
     expect(tabScrollOffset(row(7, 6), 412)).toBe(7 * SCROLL_TAB_W - 412);
     expect(tabScrollOffset(row(7, 6), 1280)).toBe(0);
+  });
+});
+
+describe("floating navigation bar", () => {
+  it("keeps the standard bar 80dp plus the gesture inset", () => {
+    const nav = makeItem("bottomNav");
+    expect(isFloatingNav(nav)).toBe(false);
+    expect(sizeOf(nav, {}).h).toBe(80 + NAV_BAR_H);
+    expect(baseRadii(nav)).toEqual({ tl: 0, tr: 0, bl: 0, br: 0 });
+  });
+
+  it("shortens the floating bar and rounds it fully", () => {
+    const nav = { ...makeItem("bottomNav"), variant: "tonal" as const, radiusTop: undefined, radiusBottom: undefined };
+    expect(isFloatingNav(nav)).toBe(true);
+    expect(sizeOf(nav, {}).h).toBe(FLOATING_NAV_H);
+    expect(baseRadii(nav)).toEqual({ tl: FLOATING_NAV_R, tr: FLOATING_NAV_R, bl: FLOATING_NAV_R, br: FLOATING_NAV_R });
+  });
+
+  it("hugs its destinations when switching to floating, and spans the screen again on the way back", () => {
+    const nav = makeItem("bottomNav");
+    const toFloating = navVariantPatch(nav, "tonal", PHONE_W);
+    expect(toFloating).toEqual({ variant: "tonal", size: undefined, radiusTop: FLOATING_NAV_R, radiusBottom: FLOATING_NAV_R });
+    const floating = { ...nav, ...toFloating };
+    expect(sizeOf(floating, {}).w).toBe(floatingNavWidth(floating));
+    expect(sizeOf(floating, {}).w).toBeLessThan(CONTENT_W);
+    expect(navVariantPatch(floating, "filled", PHONE_W)).toEqual({ variant: "filled", size: PHONE_W, radiusTop: 0, radiusBottom: 0 });
+  });
+
+  it("leaves a radius the author already chose", () => {
+    const nav = { ...makeItem("bottomNav"), size: 300, radiusTop: 12, radiusBottom: 8 };
+    expect(navVariantPatch(nav, "tonal", PHONE_W)).toEqual({ variant: "tonal", size: undefined });
+    expect(KIND_SPEC.bottomNav.hasVariant).toBe(true);
+  });
+
+  it("spaces the ends, the gaps and the icon pill alike, so the bar's two ends read the same", () => {
+    const tabs = [{ icon: "home", label: "Home" }, { icon: "search", label: "Search" }, { icon: "favorite", label: "Saved" }];
+    const icons = { ...makeItem("bottomNav"), variant: "tonal" as const, tabs, navItems: "icons" as const };
+    const parts = floatingNavItems(icons);
+    /* the selected icon pill is the 24dp icon plus the same 12dp the bar keeps at its ends */
+    expect(parts.map((part) => part.w)).toEqual([48, 24, 24]);
+    const width = floatingNavWidth(icons);
+    expect(width).toBe(FLOATING_NAV_EDGE * 2 + 48 + 24 + 24 + FLOATING_NAV_GAP * 2);
+    /* laid out end to end, the space before the first destination and after the last one match */
+    let left = FLOATING_NAV_EDGE;
+    const boxes = parts.map((part) => {
+      const box = { l: left, r: left + part.w };
+      left += part.w + FLOATING_NAV_GAP;
+      return box;
+    });
+    expect(boxes[0].l).toBe(width - boxes[boxes.length - 1].r);
+  });
+
+  it("pads only the selected destination and drops the label the layout hides", () => {
+    const tabs = [{ icon: "home", label: "Home" }, { icon: "search", label: "Search" }];
+    const floating = { ...makeItem("bottomNav"), variant: "tonal" as const, tabs };
+    expect(floatingNavItems(floating).map(({ on, icon, label, pad }) => ({ on, icon, label, pad }))).toEqual([
+      { on: true, icon: true, label: true, pad: 16 },
+      { on: false, icon: true, label: false, pad: 0 },
+    ]);
+    expect(floatingNavItems({ ...floating, navItems: "text" }).map(({ icon, label }) => ({ icon, label }))).toEqual([
+      { icon: true, label: true },
+      { icon: false, label: true },
+    ]);
+    expect(floatingNavItems({ ...floating, navItems: "always" }).every((part) => part.icon && part.label)).toBe(true);
+  });
+
+  it("treats omitted navItems as a label on the selected destination only", () => {
+    const floating = { ...makeItem("bottomNav"), variant: "tonal" as const };
+    expect(navItemsOf(floating)).toBe("selected");
+    expect(navItemsOf({ ...floating, navItems: "text" })).toBe("text");
+    expect(navItemsOf(makeItem("bottomNav"))).toBe("selected");
+    expect(isNavItems("always")).toBe(true);
+    expect(isNavItems("wide")).toBe(false);
   });
 });

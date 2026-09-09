@@ -280,6 +280,22 @@ describe("buildPrompt structure", () => {
     expect(styleBullets(build(lang, "android", [chip]), lang)).toHaveLength(4);
   });
 
+  it("names a floating navigation bar and describes the short bar in the style note", () => {
+    setGlobalLang("en");
+    const doc = fixture();
+    doc.groups = doc.groups.map((g) => ({ ...g, items: g.items.map((it) => (it.kind === "bottomNav" ? { ...it, variant: "tonal" as const } : it)) }));
+    const prompt = buildPrompt(doc, {}, undefined, "en");
+    expect(prompt).toContain("a floating navigation bar");
+    expect(styleBullets(prompt, "en").join("\n")).toContain("ShortNavigationBar");
+  });
+
+  it("names a text-only floating bar as labels with an icon on the selected destination", () => {
+    setGlobalLang("en");
+    const doc = fixture();
+    doc.groups = doc.groups.map((g) => ({ ...g, items: g.items.map((it) => (it.kind === "bottomNav" ? { ...it, variant: "tonal" as const, navItems: "text" as const } : it)) }));
+    expect(buildPrompt(doc, {}, undefined, "en")).toContain("with labels and an icon on the selected destination");
+  });
+
   it.each(LANGS)("quotes labels with %s punctuation", (lang) => {
     const prompt = build(lang);
     expect(prompt).toContain(QUOTED[lang].label);

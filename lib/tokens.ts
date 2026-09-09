@@ -57,6 +57,9 @@ export function railMetrics(it: Item) {
  *  Both bars carry their inset as extra height so their background reaches the rounded screen edge. */
 export const STATUS_BAR_H = 24;
 export const NAV_BAR_H = 24;
+/** M3 Expressive ShortNavigationBar: 64dp tall, fully rounded */
+export const FLOATING_NAV_H = 64;
+export const FLOATING_NAV_R = 32;
 /** M3 layout margin: parts that are not edge-to-edge sit this far from the screen edge */
 export const PHONE_MARGIN = 16;
 export const contentWidth = (width: number) => width - PHONE_MARGIN * 2;
@@ -664,7 +667,7 @@ export const KIND_SPEC: Record<Kind, KindSpec> = {
     w: PHONE_W,
     h: 80 + NAV_BAR_H,
     radius: 0,
-    hasVariant: false,
+    hasVariant: true,
     hasLabel: false,
     hasSupporting: false,
     hasIcon: false,
@@ -673,6 +676,7 @@ export const KIND_SPEC: Record<Kind, KindSpec> = {
     defLabel: "",
     defIcon: null,
     defSize: PHONE_W,
+    defVariant: "filled",
   },
   navRail: {
     label: "Navigation Rail",
@@ -1158,6 +1162,11 @@ export const KIND_ORDER: Kind[] = [
 /* ---------- screen data ---------- */
 export type NavTab = { icon: string; label: string };
 
+/** how a floating bar shows each destination */
+export type NavItems = "selected" | "always" | "icons" | "text";
+export const NAV_ITEMS: NavItems[] = ["selected", "always", "icons", "text"];
+export const isNavItems = (v: unknown): v is NavItems => v === "selected" || v === "always" || v === "icons" || v === "text";
+
 export type Item = {
   id: string;
   kind: Kind;
@@ -1220,9 +1229,16 @@ export type Item = {
   actions?: Record<string, Action>;
   /** the look a toggle button takes once tapped; undefined = not a toggle */
   toggle?: ToggleLook;
+  /** floating navigation bar destinations: label on the selected one when omitted */
+  navItems?: NavItems;
 };
 
 export type ToggleLook = { icon?: string | null; variant?: Variant; label?: string };
+
+/** the M3 Expressive floating (short) navigation bar, vs the standard edge-to-edge bar */
+export const isFloatingNav = (it: Item) => it.kind === "bottomNav" && it.variant === "tonal";
+/** omitted (and anything else) is the default: a label on the selected destination only */
+export const navItemsOf = (it: Item): NavItems => (isFloatingNav(it) && isNavItems(it.navItems) ? it.navItems : "selected");
 
 /** kinds that can act as a toggle button in the preview */
 export const TOGGLEABLE: Kind[] = ["button", "iconButton", "fab", "extendedFab"];
@@ -1488,7 +1504,7 @@ export function carryItemSize(it: Item, from: { w: number; h: number }, to: { w:
   const spec = KIND_SPEC[it.kind];
   const patch: Partial<Item> = {};
   const keepsShape = it.kind === "card" || it.kind === "image" || it.kind === "camera" || it.kind === "map";
-  if (spec.size && (spec.size.icon === "width" || keepsShape)) {
+  if (!isFloatingNav(it) && spec.size && (spec.size.icon === "width" || keepsShape)) {
     /* only a size that is a width; a text size or an icon button's square are left alone */
     const cur = it.size ?? spec.defSize ?? spec.w;
     if (FULL_WIDTH.includes(it.kind)) {
@@ -1714,6 +1730,25 @@ export function makeItem(kind: Kind): Item {
   return it;
 }
 
+/** Size and corners that follow a navigation-bar style change: floating hugs its
+ *  destinations and rounds fully; standard spans the screen again with square corners.
+ *  A radius the author already chose is left alone. */
+export function navVariantPatch(it: Item, variant: Variant, frameW: number): Partial<Item> {
+  if (it.kind !== "bottomNav") return { variant };
+  const floating = variant === "tonal";
+  const patch: Partial<Item> = { variant };
+  if (floating && !isFloatingNav(it)) {
+    patch.size = undefined;
+    if ((it.radiusTop ?? 0) === 0) patch.radiusTop = FLOATING_NAV_R;
+    if ((it.radiusBottom ?? 0) === 0) patch.radiusBottom = FLOATING_NAV_R;
+  } else if (!floating && isFloatingNav(it)) {
+    patch.size = frameW;
+    if ((it.radiusTop ?? FLOATING_NAV_R) === FLOATING_NAV_R) patch.radiusTop = 0;
+    if ((it.radiusBottom ?? FLOATING_NAV_R) === FLOATING_NAV_R) patch.radiusBottom = 0;
+  }
+  return patch;
+}
+
 /** Content-sized kinds are measured in the DOM; the rest derive from spec + size. */
 export const MEASURED: Kind[] = ["button", "extendedFab", "chip", "switch", "checkbox", "text", "splitButton", "radio", "badge"];
 
@@ -1767,8 +1802,9 @@ export function sizeOf(it: Item, widths: Record<string, number>) {
       /* the status-bar inset belongs to a phone: a bar wider than one has no status bar above it.
        * (An Android tablet does; the canvas leaves that to the prompt.) */
       return { w: n, h: 64 + (n > PHONE_W ? 0 : STATUS_BAR_H) };
-    case "searchBar":
     case "bottomNav":
+      return { w: isFloatingNav(it) ? floatingNavWidth(it) : n, h: isFloatingNav(it) ? FLOATING_NAV_H : s.h };
+    case "searchBar":
     case "listItem":
     case "textField":
     case "select":
@@ -1795,11 +1831,16 @@ export function baseRadii(it: Item): Radii {
     case "box":
       if (it.corners) return { ...it.corners };
     // falls through
-    case "bottomNav":
     case "topAppBar":
     case "tabs": {
       const t = it.radiusTop ?? 0;
       const b = it.radiusBottom ?? 0;
+      return { tl: t, tr: t, bl: b, br: b };
+    }
+    case "bottomNav": {
+      const fallback = isFloatingNav(it) ? FLOATING_NAV_R : 0;
+      const t = it.radiusTop ?? fallback;
+      const b = it.radiusBottom ?? fallback;
       return { tl: t, tr: t, bl: b, br: b };
     }
     case "navRail": {
@@ -1901,6 +1942,54 @@ export const toolbarWidth = (it: Item) => {
   const n = Math.max(1, it.tabs?.length ?? 0);
   return 16 + n * 48 + (n - 1) * 4;
 };
+
+/* One rhythm for the floating bar: the same 12dp at the bar's ends, between two
+ * destinations, and inside the selected icon pill, so the space before the first
+ * destination and after the last one read alike. A labelled pill takes M3's 16dp.
+ * Only the selected destination is padded; the rest are their icon or label, and
+ * the gaps do the spacing. */
+export const FLOATING_NAV_EDGE = 12;
+export const FLOATING_NAV_GAP = 12;
+const NAV_PILL_PAD_LABEL = 16;
+const NAV_PILL_PAD_ICON = 12;
+const NAV_ITEM_ICON = 24;
+const NAV_ITEM_ICON_GAP = 4;
+
+/** width of a 12px labelMedium string, rounded up so a pill never clips its label */
+function navLabelWidth(label: string) {
+  let w = 0;
+  for (const ch of label.trim()) {
+    const c = ch.codePointAt(0) ?? 0;
+    w += c > 0x2e7f ? 13 : 8;
+  }
+  return Math.min(96, w);
+}
+
+export type FloatingNavItem = { on: boolean; icon: boolean; label: boolean; pad: number; w: number };
+
+/** What each destination of a floating bar shows and how wide it draws. The
+ *  drawing, the width and the preview's tap areas all read this. */
+export function floatingNavItems(it: Item): FloatingNavItem[] {
+  const tabs = it.tabs ?? [];
+  const n = Math.max(1, tabs.length);
+  const items = navItemsOf(it);
+  const sel = Math.min(it.selected ?? 0, Math.max(0, n - 1));
+  return Array.from({ length: n }, (_, i) => {
+    const tab = tabs[i] ?? { icon: "", label: "" };
+    const on = i === sel;
+    const icon = items !== "text" || on;
+    const label = tab.label.trim().length > 0 && (items === "always" || items === "text" || (items === "selected" && on));
+    const pad = on ? (label ? NAV_PILL_PAD_LABEL : NAV_PILL_PAD_ICON) : 0;
+    const inner = (icon ? NAV_ITEM_ICON : 0) + (label ? navLabelWidth(tab.label) : 0) + (icon && label ? NAV_ITEM_ICON_GAP : 0);
+    return { on, icon, label, pad, w: pad * 2 + inner };
+  });
+}
+
+/** a floating bar hugs its destinations */
+export function floatingNavWidth(it: Item) {
+  const parts = floatingNavItems(it);
+  return FLOATING_NAV_EDGE * 2 + parts.reduce((sum, part) => sum + part.w, 0) + FLOATING_NAV_GAP * (parts.length - 1);
+}
 
 export const connectSpecOf = (it: Item): ConnectSpec | undefined => {
   const c = KIND_SPEC[it.kind].connect;

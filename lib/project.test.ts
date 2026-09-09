@@ -162,6 +162,17 @@ describe("readProject", () => {
     expect(saved).toEqual({ ...original, groups: [{ ...original.groups[0], x: side === "left" ? 0 : 1060, items: [expectedItem] }] });
   });
 
+  it.each([undefined, "selected", "always", "icons", "text"] as const)("accepts optional floating navItems %s without changing them", (value) => {
+    const project = withItem({ kind: "bottomNav", variant: "tonal", navItems: value });
+    const before = structuredClone(project);
+    expect(isProject(project)).toBe(true);
+    expect(project).toEqual(before);
+  });
+
+  it("rejects an unknown navItems value", () => {
+    expect(isProject(withItem({ kind: "bottomNav", navItems: "wide" }))).toBe(false);
+  });
+
   it.each([undefined, false, true])("accepts optional navigation rail booleans %s without changing them", (value) => {
     const project = withItem({ kind: "navRail", railExpanded: value, railModal: value });
     const before = structuredClone(project);

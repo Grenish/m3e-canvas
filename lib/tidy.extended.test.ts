@@ -35,6 +35,7 @@ import {
   DESKTOP_H,
   NAV_BAR_H,
   PHONE_MARGIN,
+  floatingNavWidth,
   makeItem,
 } from "./tokens";
 
@@ -164,6 +165,16 @@ describe("tidyFrame", () => {
     const out = tidyFrame([g], f, [f], widths)!;
     const nav = out.find((x) => x.items[0].kind === "bottomNav")!;
     expect([nav.x, nav.y]).toEqual([0, PHONE_H - (80 + NAV_BAR_H)]);
+  });
+
+  it("floats a floating navigation bar 16dp above the bottom, centered", () => {
+    const f = phoneFrame;
+    const bar = { ...navBar("bn"), variant: "tonal" as const, radiusTop: 32, radiusBottom: 32 };
+    const g = group("g1", 100, 100, [bar]);
+    const out = tidyFrame([g], f, [f], widths)!;
+    const nav = out.find((x) => x.items[0].kind === "bottomNav")!;
+    const w = floatingNavWidth(bar);
+    expect([nav.x, nav.y]).toEqual([Math.round((PHONE_W - w) / 2), PHONE_H - PHONE_MARGIN - 64]);
   });
 
   it("places a FAB at the bottom-right corner of the body", () => {

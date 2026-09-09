@@ -1,4 +1,4 @@
-import { CONTENT_W, FULL_WIDTH, Frame, Group, Item, KIND_SPEC, Kind, PHONE_MARGIN, RAIL_COLLAPSED_W, railExpansionSide, railWidth, railLayoutWidth, canJoin, isPhoneFrame, scaleR, carryItemSize, connectSpecOf, frameOfGroup, frameRect, frameSizeOf, groupBounds, layoutOf, isExpanded } from "./tokens";
+import { CONTENT_W, FULL_WIDTH, Frame, Group, Item, KIND_SPEC, Kind, PHONE_MARGIN, RAIL_COLLAPSED_W, railExpansionSide, railWidth, railLayoutWidth, canJoin, isPhoneFrame, scaleR, carryItemSize, connectSpecOf, frameOfGroup, frameRect, frameSizeOf, groupBounds, layoutOf, isExpanded, isFloatingNav, FLOATING_NAV_R } from "./tokens";
 
 /* Rule-based layout for one screen. Nothing here is guessed by a model.
  *
@@ -6,7 +6,7 @@ import { CONTENT_W, FULL_WIDTH, Frame, Group, Item, KIND_SPEC, Kind, PHONE_MARGI
  *    each other, fuse into a connected run, the same way the magnetic drop does:
  *    list items stacked in a column, buttons or icon buttons side by side in a row.
  * 2. Bars stick to the edges they belong to (app bar and tabs at the top, the
- *    navigation bar at the bottom, toolbars and snackbars hovering above it,
+ *    navigation bar at the bottom, a floating bar / toolbar / snackbar hovering above it,
  *    a bottom sheet on the bottom edge), a FAB takes the bottom-right corner,
  *    a dialog is centered.
  * 3. Everything else is stacked between the bars on the 16dp layout margins, from
@@ -157,8 +157,8 @@ function rowsOf(units: Unit[]): Unit[][] {
 
 const isRail = (u: Unit) => u.kind === "navRail";
 const isTop = (u: Unit) => u.kind === "topAppBar" || u.kind === "tabs";
-const isBottomBar = (u: Unit) => u.kind === "bottomNav" || (u.kind === "box" && !!u.checked);
-const isFloatingBottom = (u: Unit) => u.kind === "toolbar" || u.kind === "snackbar";
+const isBottomBar = (u: Unit) => (u.kind === "bottomNav" && !isFloatingNav(u.probe)) || (u.kind === "box" && !!u.checked);
+const isFloatingBottom = (u: Unit) => u.kind === "toolbar" || u.kind === "snackbar" || isFloatingNav(u.probe);
 const isFab = (u: Unit) => u.kind === "fab" || u.kind === "extendedFab" || u.kind === "fabMenu";
 const isOverlay = (u: Unit) => u.kind === "dialog";
 /** a line of text, and the small controls that pair with one across a row */
@@ -229,7 +229,15 @@ export function carryFrame(groups: Group[], frame: Frame, to: Frame, frames: Fra
     if (expanded && it.kind === "bottomNav") return { ...it, kind: "navRail", railExpanded: false, size: undefined, size2: after.h, radiusTop: it.radiusBottom, radiusBottom: it.radiusTop };
     if (!expanded && it.kind === "navRail") {
       const { railExpanded: _expanded, railModal: _modal, [railExpansionSide]: _side, ...bar } = it;
-      return { ...bar, kind: "bottomNav", size: after.w, size2: undefined, radiusTop: it.radiusBottom, radiusBottom: it.radiusTop };
+      const floating = bar.variant === "tonal";
+      return {
+        ...bar,
+        kind: "bottomNav",
+        size: floating ? undefined : after.w,
+        size2: undefined,
+        radiusTop: floating ? (it.radiusBottom ?? FLOATING_NAV_R) : it.radiusBottom,
+        radiusBottom: floating ? (it.radiusTop ?? FLOATING_NAV_R) : it.radiusTop,
+      };
     }
     return it;
   };

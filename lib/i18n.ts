@@ -209,6 +209,11 @@ export const UI = {
   outlined: { ja: "枠線", en: "Outlined", zh: "描边" },
   standard: { ja: "標準", en: "Standard", zh: "标准" },
   vibrant: { ja: "鮮やか", en: "Vibrant", zh: "鲜艳" },
+  floating: { ja: "フローティング", en: "Floating", zh: "悬浮" },
+  navItemsSelected: { ja: "テキストなし", en: "Without text", zh: "无文字" },
+  navItemsAlways: { ja: "テキストあり", en: "With text", zh: "有文字" },
+  navItemsIcons: { ja: "アイコンのみ", en: "Icon only", zh: "仅图标" },
+  navItemsText: { ja: "テキストのみ", en: "Text only", zh: "仅文字" },
   state: { ja: "状態", en: "State", zh: "状态" },
   railState: { ja: "レールの表示", en: "Rail state", zh: "导航栏形态" },
   railLegacy: { ja: "従来のレール · 幅 80dp", en: "Legacy rail · 80dp wide", zh: "旧版导航栏 · 宽 80dp" },
@@ -434,7 +439,7 @@ export type UIKey = keyof typeof UI;
 /** exported for the parity tests only; read strings through t() */
 export const KO: Record<UIKey, string> = {
   frameSize: "화면 크기", phoneFrame: "휴대전화", desktopFrame: "데스크톱", columnWidth: "휴대전화 한 화면 너비", cornerLeft: "왼쪽 모서리", cornerRight: "오른쪽 모서리", cornersEach: "모서리별로 지정", cornerTl: "왼쪽 위", cornerTr: "오른쪽 위", cornerBl: "왼쪽 아래", cornerBr: "오른쪽 아래",
-  filled: "채움", tonal: "색조", elevated: "그림자", outlined: "윤곽선", standard: "표준", vibrant: "선명함",
+  filled: "채움", tonal: "색조", elevated: "그림자", outlined: "윤곽선", standard: "표준", vibrant: "선명함", floating: "플로팅", navItemsSelected: "텍스트 없음", navItemsAlways: "텍스트 있음", navItemsIcons: "아이콘만", navItemsText: "텍스트만",
   parts: "부품", layers: "레이어", edit: "편집", prompt: "프롬프트", closePanel: "패널 닫기",
   search: "검색", favorites: "즐겨찾기", addFavorite: "즐겨찾기에 추가", removeFavorite: "즐겨찾기에서 제거", clear: "지우기", language: "언어",
   select: "선택 (V)", hand: "손 도구 (H / Space)", blank: "빈 캔버스", phone: "휴대전화 화면", addFrame: "화면 추가", preview: "미리보기 (P)",

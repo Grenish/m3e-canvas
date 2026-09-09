@@ -32,6 +32,8 @@ import {
   railWidth,
   progressThickness,
   isScrollableTabs,
+  isFloatingNav,
+  navItemsOf,
 } from "./tokens";
 
 const VARIANT_TEXT: Record<Lang, Record<Variant, string>> = {
@@ -141,6 +143,17 @@ function railStateText(it: Item, lang: Lang): string {
   return `; ${component}, ${it.railExpanded ? "expanded" : "collapsed"}, ${width}dp wide; ${it.railModal ? "modal overlay: when expanded, cover the content with a scrim while keeping the layout footprint at 96dp" : "non-modal layout: reserve the current width in the layout"}; toggle expansion with the top menu button`;
 }
 
+/** extra words for a floating bar that is not the default (label on the selected destination only) */
+function navItemsText(it: Item, lang: Lang): string {
+  if (!isFloatingNav(it)) return "";
+  const items = navItemsOf(it);
+  if (items === "selected") return "";
+  if (lang === "ja") return items === "always" ? "。各項目にラベル" : items === "icons" ? "。アイコンのみ" : "。各項目はラベル、選択中のみアイコン";
+  if (lang === "zh") return items === "always" ? "。每项都有标签" : items === "icons" ? "。仅图标" : "。各项为文字，选中项显示图标";
+  if (lang === "ko") return items === "always" ? ". 모든 항목에 레이블" : items === "icons" ? ". 아이콘만" : ". 항목은 레이블, 선택된 항목만 아이콘";
+  return items === "always" ? ", with a label on every destination" : items === "icons" ? ", icons only" : ", with labels and an icon on the selected destination";
+}
+
 /* ================= single parts ================= */
 
 function itemJa(it: Item): string {
@@ -162,7 +175,7 @@ function itemJa(it: Item): string {
       return `タイトル${q(it.label)}のトップアプリバー${it.icon ? `。左に ${it.icon}` : ""}${it.icon2 ? `、右に ${it.icon2}` : ""}${it.icon || it.icon2 ? " のアイコンボタン" : ""}`;
     case "bottomNav": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "ラベルなし")}(${t.icon || "アイコンなし"})`);
-      return `${tabs.length}項目のナビゲーションバー（${tabs.join("、")}。${selectedText(it, "ja")}）`;
+      return `${isFloatingNav(it) ? "フローティングの" : ""}${tabs.length}項目のナビゲーションバー（${tabs.join("、")}。${selectedText(it, "ja")}${navItemsText(it, "ja")}）`;
     }
     case "navRail": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "ラベルなし")}(${t.icon || "アイコンなし"})`);
@@ -253,7 +266,7 @@ function itemEn(it: Item): string {
       return `a top app bar titled ${q(it.label)}${it.icon ? ` with a ${it.icon} icon button on the left` : ""}${it.icon2 ? `${it.icon ? " and" : " with"} ${it.icon2} on the right` : ""}`;
     case "bottomNav": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "unlabeled")} (${t.icon || "no icon"})`);
-      return `a navigation bar with ${tabs.length} destinations: ${tabs.join(", ")}; ${selectedText(it, "en")}`;
+      return `a ${isFloatingNav(it) ? "floating " : ""}navigation bar with ${tabs.length} destinations: ${tabs.join(", ")}; ${selectedText(it, "en")}${navItemsText(it, "en")}`;
     }
     case "navRail": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "unlabeled")} (${t.icon || "no icon"})`);
@@ -344,7 +357,7 @@ function itemZh(it: Item): string {
       return `标题为${q(it.label)}的顶部应用栏${it.icon ? `，左侧是 ${it.icon}` : ""}${it.icon2 ? `，右侧是 ${it.icon2}` : ""}${it.icon || it.icon2 ? " 图标按钮" : ""}`;
     case "bottomNav": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "无标签")}(${t.icon || "无图标"})`);
-      return `${tabs.length}个项目的导航栏（${tabs.join("、")}，${selectedText(it, "zh")}）`;
+      return `${isFloatingNav(it) ? "悬浮的" : ""}${tabs.length}个项目的导航栏（${tabs.join("、")}，${selectedText(it, "zh")}${navItemsText(it, "zh")}）`;
     }
     case "navRail": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "无标签")}(${t.icon || "无图标"})`);
@@ -429,7 +442,7 @@ function itemKo(it: Item): string {
     case "topAppBar": return `제목이 ${q(it.label)}인 상단 앱 바${it.icon ? `, 왼쪽 ${it.icon}` : ""}${it.icon2 ? `, 오른쪽 ${it.icon2}` : ""}${it.icon || it.icon2 ? " 아이콘 버튼" : ""}`;
     case "bottomNav": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "레이블 없음")}(${t.icon || "아이콘 없음"})`);
-      return `${tabs.length}개 항목의 내비게이션 바(${tabs.join(", ")}, ${selectedText(it, "ko")})`;
+      return `${isFloatingNav(it) ? "플로팅 " : ""}${tabs.length}개 항목의 내비게이션 바(${tabs.join(", ")}, ${selectedText(it, "ko")}${navItemsText(it, "ko")})`;
     }
     case "navRail": {
       const tabs = (it.tabs ?? []).map((t) => `${q(t.label || "레이블 없음")}(${t.icon || "아이콘 없음"})`);
@@ -908,7 +921,7 @@ const STYLE_NOTES: Record<Lang, Partial<Record<Kind | "boxSheet", string>>> = {
     topAppBar:
       "トップアプリバー: 高さ 64dp、背景は surface。背景はステータスバーの後ろまで伸ばし、その分（システムインセット）だけ上に余白を取る。タイトルは titleLarge、左右のアイコンボタンは 48dp。スクロール時に surfaceContainer へ色が変わる標準の挙動でよい。",
     bottomNav:
-      "ナビゲーションバー: 高さ 80dp、背景は surfaceContainer。背景は画面下端のジェスチャーナビゲーション領域まで伸ばし、その分（システムインセット）だけ下に余白を取る。選択中の項目は secondaryContainer のピル型インジケータ（幅 64dp・高さ 32dp）で示し、アイコンは塗りつぶし、ラベルは labelMedium。",
+      "ナビゲーションバー: 標準は高さ 80dp、背景は surfaceContainer。背景は画面下端のジェスチャーナビゲーション領域まで伸ばし、その分（システムインセット）だけ下に余白を取る。選択中の項目は secondaryContainer のピル型インジケータ（幅 64dp・高さ 32dp）で示し、アイコンは塗りつぶし、ラベルは labelMedium。フローティングは M3 Expressive の ShortNavigationBar で、高さ 64dp、角は完全な丸、背景は surfaceContainer。幅は項目に合わせ、中央揃えで下端から 16dp 上に浮かせ、内容の上に重ねる。項目の出し方はテキストなし（選択中だけアイコンの横にラベル、初期値）、テキストあり（全項目にラベル）、アイコンのみ、テキストのみ（全項目はラベル、選択中だけアイコン）。選択中は secondaryContainer のピル。",
     navRail:
       "ナビゲーションレール: 幅 80dp、画面の左端に上から下まで、背景は surfaceContainer。項目は上から縦に並べ、選択中の項目は secondaryContainer のピル型インジケータ（幅 56dp・高さ 32dp）で示し、アイコンは塗りつぶし、その下に labelMedium のラベル。本文はレールの右に置く。",
     searchBar: "検索バー: 高さ 56dp、角は完全な丸、背景は surfaceContainerHigh。先頭に検索アイコン、末尾に指定のアイコン。",
@@ -957,7 +970,7 @@ const STYLE_NOTES: Record<Lang, Partial<Record<Kind | "boxSheet", string>>> = {
     topAppBar:
       "Top app bar: 64dp tall on surface, with its background extended behind the status bar (pad the top by the system inset). Title in titleLarge, 48dp icon buttons on each side. The standard tint to surfaceContainer on scroll is fine.",
     bottomNav:
-      "Navigation bar: 80dp tall on surfaceContainer, with its background extended down through the gesture navigation area (pad the bottom by the system inset). The active destination shows a secondaryContainer pill indicator (64×32dp), a filled icon and a labelMedium label.",
+      "Navigation bar: the standard bar is 80dp tall on surfaceContainer, with its background extended down through the gesture navigation area (pad the bottom by the system inset). The active destination shows a secondaryContainer pill indicator (64×32dp), a filled icon and a labelMedium label. The floating bar is the M3 Expressive ShortNavigationBar: 64dp tall, fully rounded, on surfaceContainer, hugging its destinations, centered, and floating 16dp above the bottom over the content. Destinations can be without text (a label beside the selected icon only, the default), with text on every destination, icon only, or text only (labels on every destination, and an icon on the selected one). The selected destination uses a secondaryContainer pill.",
     navRail:
       "Navigation rail: 80dp wide on surfaceContainer, running the full height of the left edge. Destinations stack from the top; the active one shows a secondaryContainer pill indicator (56×32dp) with a filled icon and a labelMedium label below it. The content sits to the right of the rail.",
     searchBar: "Search bar: 56dp tall, fully rounded, on surfaceContainerHigh, with a leading search icon and the specified trailing icon.",
@@ -1005,7 +1018,7 @@ const STYLE_NOTES: Record<Lang, Partial<Record<Kind | "boxSheet", string>>> = {
     topAppBar:
       "顶部应用栏：高 64dp，背景为 surface。背景延伸到状态栏后面，并按系统内边距在顶部留出空间。标题用 titleLarge，左右图标按钮 48dp。滚动时变为 surfaceContainer 的标准行为即可。",
     bottomNav:
-      "导航栏：高 80dp，背景为 surfaceContainer。背景延伸到屏幕底部的手势导航区域，并按系统内边距在底部留出空间。选中项用 secondaryContainer 的胶囊指示器（宽 64dp、高 32dp）表示，图标为填充样式，标签用 labelMedium。",
+      "导航栏：标准样式高 80dp，背景为 surfaceContainer。背景延伸到屏幕底部的手势导航区域，并按系统内边距在底部留出空间。选中项用 secondaryContainer 的胶囊指示器（宽 64dp、高 32dp）表示，图标为填充样式，标签用 labelMedium。悬浮样式是 M3 Expressive 的 ShortNavigationBar：高 64dp，完全圆角，背景为 surfaceContainer，宽度随目的地收缩并居中，距底部 16dp 悬浮并叠在内容之上。目的地可以无文字（默认，仅选中项在图标旁显示标签）、有文字（每项都有标签）、仅图标，或仅文字（每项为标签，选中项显示图标）。选中项用 secondaryContainer 胶囊。",
     navRail:
       "侧边导航栏：宽 80dp，贴着屏幕左缘通高，背景为 surfaceContainer。项目从上往下排列，选中项用 secondaryContainer 的胶囊指示器（宽 56dp、高 32dp）表示，图标为填充样式，下方为 labelMedium 标签。内容放在导航栏右侧。",
     searchBar: "搜索栏：高 56dp，完全圆角，背景为 surfaceContainerHigh。左侧显示搜索图标，右侧显示指定图标。",
@@ -1049,7 +1062,7 @@ const STYLE_NOTES: Record<Lang, Partial<Record<Kind | "boxSheet", string>>> = {
     extendedFab: "확장 FAB: 높이 56dp, 모서리 16dp, 왼쪽에 아이콘, 오른쪽에 레이블을 둔다.",
     chip: "칩: 높이 32dp, 모서리 8dp. 선택 상태는 secondaryContainer로 채우고 앞쪽에 체크 아이콘을 표시한다. 칩 그룹은 간격 8dp로 가로 배치하고 넘치면 가로 스크롤한다.",
     topAppBar: "상단 앱 바: 높이 64dp, 배경 surface. 상태 표시줄 뒤까지 배경을 늘리고 시스템 인셋만큼 위쪽 여백을 둔다. 제목은 titleLarge, 양쪽 아이콘 버튼은 48dp를 사용한다.",
-    bottomNav: "내비게이션 바: 높이 80dp, 배경 surfaceContainer. 제스처 내비게이션 영역까지 배경을 늘리고 시스템 인셋만큼 아래쪽 여백을 둔다. 선택 항목은 64×32dp secondaryContainer 알약 표시기, 채운 아이콘, labelMedium 레이블로 표시한다.",
+    bottomNav: "내비게이션 바: 표준은 높이 80dp, 배경 surfaceContainer. 제스처 내비게이션 영역까지 배경을 늘리고 시스템 인셋만큼 아래쪽 여백을 둔다. 선택 항목은 64×32dp secondaryContainer 알약 표시기, 채운 아이콘, labelMedium 레이블로 표시한다. 플로팅은 M3 Expressive ShortNavigationBar로 높이 64dp, 완전 둥근 모서리, 배경 surfaceContainer이며 너비는 항목에 맞추고 가운데 정렬해 하단에서 16dp 위에 띄워 콘텐츠 위에 겹친다. 항목은 텍스트 없음(기본값, 선택된 아이콘 옆에만 레이블), 텍스트 있음(모든 항목에 레이블), 아이콘만, 텍스트만(모든 항목은 레이블, 선택된 항목만 아이콘) 중 하나다. 선택 항목은 secondaryContainer 알약으로 표시한다.",
     searchBar: "검색창: 높이 56dp, 완전 둥근 모서리, 배경 surfaceContainerHigh. 앞쪽 검색 아이콘과 지정된 뒤쪽 아이콘을 둔다.",
     card: "카드: 모서리 20dp. 이미지 영역은 각 카드의 설명에 따라 위쪽·앞쪽·뒤쪽·배경 전체 중 한 곳에 배치한다(배경일 때는 텍스트 쪽에서 스크림을 넣는다. 밝은 텍스트에는 검정, 어두운 텍스트에는 흰색 페이드). 이미지는 비율을 유지한 채 가운데를 기준으로 잘라 영역을 채운다. 채움은 surfaceContainerHighest, 돌출은 surfaceContainerLow와 Level 1 그림자, 윤곽선은 1dp outlineVariant 테두리를 사용한다. 제목 titleMedium, 본문 bodyMedium. 안쪽 여백 20dp, 제목과 본문 사이 4dp, 이미지와 텍스트 사이 12dp.",
     listItem: "목록 항목: 높이 72dp, 앞쪽 아이콘 24dp(별도 지정이 없으면 40dp primaryContainer 원 위), 주 텍스트 bodyLarge, 보조 텍스트 bodyMedium/onSurfaceVariant. 연결 목록은 간격 3dp, 바깥 모서리 28dp, 안쪽 모서리 8dp.",
@@ -1215,19 +1228,19 @@ const GENERAL: Record<Lang, (string | ((pl: Platform) => string))[]> = {
 const STYLE_NOTES_WEB: Record<Lang, Partial<Record<Kind, string>>> = {
   ko: {
     topAppBar: "상단 앱 바: 높이 64dp, 배경 surface. 제목은 titleLarge, 양쪽 아이콘 버튼은 48dp를 사용한다. 스크롤 시 surfaceContainer로 색상이 바뀌는 표준 동작을 사용한다.",
-    bottomNav: "내비게이션 바: 높이 80dp, 배경 surfaceContainer. 선택 항목은 secondaryContainer 알약 표시기(64×32dp), 채운 아이콘과 labelMedium 레이블로 표시한다.",
+    bottomNav: "내비게이션 바: 표준은 높이 80dp, 배경 surfaceContainer. 선택 항목은 secondaryContainer 알약 표시기(64×32dp), 채운 아이콘과 labelMedium 레이블로 표시한다. 플로팅은 M3 Expressive ShortNavigationBar로 높이 64dp, 완전 둥근 모서리, 배경 surfaceContainer이며 너비는 항목에 맞추고 가운데 정렬해 하단에서 16dp 위에 띄워 콘텐츠 위에 겹친다. 항목은 텍스트 없음(기본값, 선택된 아이콘 옆에만 레이블), 텍스트 있음(모든 항목에 레이블), 아이콘만, 텍스트만(모든 항목은 레이블, 선택된 항목만 아이콘) 중 하나다. 선택 항목은 secondaryContainer 알약으로 표시한다.",
   },
   ja: {
     topAppBar: "トップアプリバー: 高さ 64dp、背景は surface。タイトルは titleLarge、左右のアイコンボタンは 48dp。スクロール時に surfaceContainer へ色が変わる標準の挙動でよい。",
-    bottomNav: "ナビゲーションバー: 高さ 80dp、背景は surfaceContainer。選択中の項目は secondaryContainer のピル型インジケータ（幅 64dp・高さ 32dp）で示し、アイコンは塗りつぶし、ラベルは labelMedium。",
+    bottomNav: "ナビゲーションバー: 標準は高さ 80dp、背景は surfaceContainer。選択中の項目は secondaryContainer のピル型インジケータ（幅 64dp・高さ 32dp）で示し、アイコンは塗りつぶし、ラベルは labelMedium。フローティングは M3 Expressive の ShortNavigationBar で、高さ 64dp、角は完全な丸、背景は surfaceContainer。幅は項目に合わせ、中央揃えで下端から 16dp 上に浮かせ、内容の上に重ねる。項目の出し方はテキストなし（選択中だけアイコンの横にラベル、初期値）、テキストあり（全項目にラベル）、アイコンのみ、テキストのみ（全項目はラベル、選択中だけアイコン）。選択中は secondaryContainer のピル。",
   },
   en: {
     topAppBar: "Top app bar: 64dp tall on surface. Title in titleLarge, 48dp icon buttons on each side. The standard tint to surfaceContainer on scroll is fine.",
-    bottomNav: "Navigation bar: 80dp tall on surfaceContainer. The active destination shows a secondaryContainer pill indicator (64×32dp), a filled icon and a labelMedium label.",
+    bottomNav: "Navigation bar: the standard bar is 80dp tall on surfaceContainer. The active destination shows a secondaryContainer pill indicator (64×32dp), a filled icon and a labelMedium label. The floating bar is the M3 Expressive ShortNavigationBar: 64dp tall, fully rounded, on surfaceContainer, hugging its destinations, centered, and floating 16dp above the bottom over the content. Destinations can be without text (a label beside the selected icon only, the default), with text on every destination, icon only, or text only (labels on every destination, and an icon on the selected one). The selected destination uses a secondaryContainer pill.",
   },
   zh: {
     topAppBar: "顶部应用栏：高 64dp，背景为 surface。标题用 titleLarge，左右图标按钮 48dp。滚动时变为 surfaceContainer 的标准行为即可。",
-    bottomNav: "导航栏：高 80dp，背景为 surfaceContainer。选中项用 secondaryContainer 的胶囊指示器（宽 64dp、高 32dp）表示，图标为填充样式，标签用 labelMedium。",
+    bottomNav: "导航栏：标准样式高 80dp，背景为 surfaceContainer。选中项用 secondaryContainer 的胶囊指示器（宽 64dp、高 32dp）表示，图标为填充样式，标签用 labelMedium。悬浮样式是 M3 Expressive 的 ShortNavigationBar：高 64dp，完全圆角，背景为 surfaceContainer，宽度随目的地收缩并居中，距底部 16dp 悬浮并叠在内容之上。目的地可以无文字（默认，仅选中项在图标旁显示标签）、有文字（每项都有标签）、仅图标，或仅文字（每项为标签，选中项显示图标）。选中项用 secondaryContainer 胶囊。",
   },
 };
 

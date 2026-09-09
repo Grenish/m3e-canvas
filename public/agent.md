@@ -99,7 +99,7 @@ Sizes are in dp; `size` is the width unless noted. Content width inside the phon
 | kind | what it is | useful fields | default size |
 |---|---|---|---|
 | `topAppBar` | top app bar | `label` title, `icon` leading, `icon2` trailing, `actions` with keys `icon` / `icon2` | 412 × 88, at the top |
-| `bottomNav` | navigation bar | `tabs` (3–5 of `{icon,label}`), `selected` index, `actions` with keys `tab:0`… | 412 × 104, at the bottom |
+| `bottomNav` | navigation bar | `tabs` (3–5 of `{icon,label}`), `selected` index, `actions` with keys `tab:0`…, `variant` `filled` (standard, default) or `tonal` (floating ShortNavigationBar), `navItems` on a floating bar: omit/`selected` (label on the selected destination only), `always` (labels on every destination), `icons` (icon only), `text` (labels, with an icon on the selected destination) | 412 × 104 standard at the bottom; floating hugs its destinations × 64, 16dp above the bottom |
 | `navRail` | navigation rail (desktop) | `tabs`, `selected`, `railExpanded` false / true for M3 Expressive collapsed / expanded, `railModal` for modal expansion, `size2` height | 96 collapsed / 220 expanded; omit both rail fields for the original 80-wide rail |
 | `tabs` | tab row | `tabs` (any count; six or more scroll horizontally), `selected` | 412 × 48 |
 | `searchBar` | search bar | `label` placeholder, `icon2` trailing | 380 × 56 |
