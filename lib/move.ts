@@ -75,7 +75,9 @@ export function liftSelection(
  *  does when it lands there: a bar spans the screen beside its rails, and nothing is taller
  *  than the screen. Such a bar keeps to its own slot rather than moving with the block. A
  *  group let go on the empty canvas stays as it is. `from` names the screen each group was
- *  on when the move began. */
+ *  on when the move began. Each group stays with the screen it was let go over: shifting the
+ *  block can carry a group's centre past that screen's edge, and it is pulled back into the
+ *  same screen rather than handed to a neighbour. */
 export function landMoved(
   groups: Group[],
   moving: Set<string>,
@@ -84,6 +86,7 @@ export function landMoved(
   widths: Record<string, number>,
 ): Group[] {
   const next = new Map<string, Group>();
+  const dest = new Map<string, Frame>();
   const blocks = new Map<string, Group[]>();
   const bars = new Set<string>();
   for (const g of groups) {
@@ -110,6 +113,7 @@ export function landMoved(
       }
     }
     next.set(g.id, sized);
+    dest.set(g.id, to);
     if (bars.has(g.id)) continue;
     blocks.set(to.id, [...(blocks.get(to.id) ?? []), sized]);
   }
@@ -124,7 +128,7 @@ export function landMoved(
   return groups.map((g) => {
     const n = next.get(g.id);
     if (!n) return g;
-    return pullInto(n, frameOfGroup(n, frames, widths)!, widths);
+    return pullInto(n, dest.get(g.id)!, widths);
   });
 }
 

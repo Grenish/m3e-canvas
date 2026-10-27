@@ -1997,7 +1997,10 @@ export default function Editor({ initialLang, onReady }: { initialLang: Lang; on
   const isGesturing = gesture !== null;
   useEffect(() => {
     if (!isGesturing) return;
-    const move = (e: PointerEvent) => {
+    /* where the pointer last was, so a key pressed while it is still can be read as a move there */
+    let last: { clientX: number; clientY: number } | null = null;
+    const move = (e: { clientX: number; clientY: number; ctrlKey: boolean; metaKey: boolean }) => {
+      last = { clientX: e.clientX, clientY: e.clientY };
       const g = gestureRef.current;
       if (!g) return;
       if (g.kind === "pan") {
@@ -2116,8 +2119,9 @@ export default function Editor({ initialLang, onReady }: { initialLang: Lang; on
           const r = frameRect(fr);
           return cx >= r.l && cx <= r.r && cy >= r.t && cy <= r.b;
         });
-        const mx = loose ? dx : guide?.x !== undefined ? Math.round(guide.x - b.l) : onGrid(b.l + dx, f?.x ?? 0) - b.l;
-        const my = loose ? dy : guide?.y !== undefined ? Math.round(guide.y - b.t) : onGrid(b.t + dy, f?.y ?? 0) - b.t;
+        /* a Ctrl drop keeps the whole pixel the pointer chose, as a single part's does */
+        const mx = loose ? Math.round(dx) : guide?.x !== undefined ? Math.round(guide.x - b.l) : onGrid(b.l + dx, f?.x ?? 0) - b.l;
+        const my = loose ? Math.round(dy) : guide?.y !== undefined ? Math.round(guide.y - b.t) : onGrid(b.t + dy, f?.y ?? 0) - b.t;
         setGroups((gs) =>
           gs.map((x) => {
             const o = at.get(x.id);
@@ -2211,13 +2215,26 @@ export default function Editor({ initialLang, onReady }: { initialLang: Lang; on
         setGroups((gs) => landMoved(gs, moving, from, framesRef.current, widthsRef.current));
       }
     };
+    /* Ctrl (or Cmd) pressed or released while the pointer is still: a selection being carried
+       lets go of the run, the guide and the grid (or is free to take them again) right away,
+       not on the next move, so a drop then lands where the pointer is */
+    const onCtrl = (e: KeyboardEvent) => {
+      if ((e.key !== "Control" && e.key !== "Meta") || e.repeat) return;
+      const g = gestureRef.current;
+      if (g?.kind !== "multi" || !g.moved || !last) return;
+      move({ clientX: last.clientX, clientY: last.clientY, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
+    window.addEventListener("keydown", onCtrl);
+    window.addEventListener("keyup", onCtrl);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      window.removeEventListener("keydown", onCtrl);
+      window.removeEventListener("keyup", onCtrl);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGesturing]);

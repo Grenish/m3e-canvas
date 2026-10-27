@@ -76,12 +76,13 @@ describe("landMoved", () => {
     expect(landMoved([g], ids("g1"), new Map([["g1", "f1"]]), frames, {})[0]).toBe(g);
   });
 
-  it("stretches a bar carried onto another screen across it", () => {
+  it("stretches a bar carried onto a wider screen across it", () => {
+    const wide: Frame = { ...next, w: 600 };
     const bar = { ...part("topAppBar", "bar"), size: PHONE_W };
     const g = run("g1", PHONE_W + 140, 0, [bar]);
-    const out = landMoved([g], ids("g1"), new Map([["g1", "f1"]]), frames, {});
-    expect(out[0].x).toBe(next.x);
-    expect(out[0].items[0].size).toBe(PHONE_W);
+    const out = landMoved([g], ids("g1"), new Map([["g1", "f1"]]), [home, wide], {});
+    expect(out[0].x).toBe(wide.x);
+    expect(out[0].items[0].size).toBe(600);
   });
 
   it("pulls the groups over one screen in as one block, keeping their spacing", () => {
@@ -93,9 +94,26 @@ describe("landMoved", () => {
     expect(out[1].y - out[0].y).toBe(b.y - a.y);
   });
 
+  it("keeps a block larger than its screen on that screen", () => {
+    const box = (id: string): Item => ({ ...part("box", id), size: 300 });
+    /* both centres are on the first screen, but together they are wider than it: shifting the
+     * block in carries the right one's centre over onto the next screen */
+    const a = run("g1", -120, 100, [box("a")]);
+    const b = run("g2", 250, 100, [box("b")]);
+    const out = landMoved([a, b], ids("g1", "g2"), new Map([["g1", "f1"], ["g2", "f1"]]), frames, {});
+    for (const g of out) {
+      const r = groupBounds(g, {});
+      expect(r.l).toBeGreaterThanOrEqual(frameRect(home).l);
+      expect(r.r).toBeLessThanOrEqual(frameRect(home).r);
+    }
+  });
+
   it("does not touch groups that are not moving", () => {
-    const g = run("g1", PHONE_W + 100 - 20, PHONE_H - 10, [part("button", "a")]);
-    expect(landMoved([g], ids(), new Map(), frames, {})[0]).toBe(g);
+    /* sticking out of the first screen, so it would be pulled in were it processed */
+    const g = run("g1", PHONE_W - 30, 300, [part("button", "a")]);
+    const out = landMoved([g], ids(), new Map(), frames, {});
+    expect(out[0]).toBe(g);
+    expect([out[0].x, out[0].y]).toEqual([PHONE_W - 30, 300]);
   });
 });
 
